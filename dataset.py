@@ -15,7 +15,9 @@ class ImageColorizationDataset(Dataset):
         """
         self.img_dir = img_dir
         self.img_filenames = [
-            os.path.join(img_dir, fname) for fname in os.listdir(img_dir) if fname.endswith((".png", ".jpg", ".jpeg"))
+            os.path.join(img_dir, filename)
+            for filename in os.listdir(img_dir)
+            if filename.endswith((".png", ".jpg", ".jpeg"))
         ]
         self.transform = transform
 
@@ -30,7 +32,9 @@ class ImageColorizationDataset(Dataset):
             raise FileNotFoundError(f"Image not found at {img_path}")
 
         # Convert BGR to LAB
-        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype("float32")  # OpenCV outputs 8-bit LAB
+        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(
+            "float32"
+        )  # OpenCV outputs 8-bit LAB
 
         # Normalize LAB channels [0, 255] -> [0, 1]
         lab_img /= 255.0
@@ -58,9 +62,9 @@ if __name__ == "__main__":
     )
 
     dataset = ImageColorizationDataset(img_dir=image_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=4)
 
     for L, AB in dataloader:
-        print("L channel shape:", L.shape)  # (batch_size, 1, H, W)
-        print("AB channels shape:", AB.shape)  # (batch_size, 2, H, W)
+        print("L channel shape:", L.shape)  # Expected: (batch_size, 1, H, W)
+        print("AB channels shape:", AB.shape)  # Expected: (batch_size, 2, H, W)
         break
