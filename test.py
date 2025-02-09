@@ -84,8 +84,8 @@ def main():
     os.makedirs(output_folder, exist_ok=True)
 
     # Model parameters (must match those used during training)
-    arch = "unet"
-    encoder_name = "resnet34"
+    arch = "UnetPlusPlus"
+    encoder_name = "efficientnet-b3"
     encoder_weights = "imagenet"
     target_size = (384, 384)
 

@@ -11,8 +11,8 @@ from dataset import ImageColorizationDataset
 class ColorizationModel(nn.Module):
     def __init__(
         self,
-        arch="unet",
-        encoder_name="resnet34",
+        arch="UnetPlusPlus",
+        encoder_name="efficientnet-b3",
         encoder_weights="imagenet",
         activation="sigmoid",
     ):
@@ -41,14 +41,14 @@ class ColorizationModel(nn.Module):
 
 if __name__ == "__main__":
     image_dir = "./test_images"
-    arch = "unet"
-    encoder_name = "resnet18"
+    arch = "UnetPlusPlus"
+    encoder_name = "efficientnet-b3"
     encoder_weights = "imagenet"
 
     transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            A.RandomCrop(height=256, width=256),
+            A.RandomCrop(height=384, width=384),
             ToTensorV2(),
         ]
     )

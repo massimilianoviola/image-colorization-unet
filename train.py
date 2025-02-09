@@ -18,12 +18,12 @@ def train():
     # --------------------------
     # Training configuration
     # --------------------------
-    image_dir = "./test_images"  # Directory containing your training images
+    image_dir = "./train_images/DIV2K_train_LR_bicubic/X3"  # Directory containing your training images
     batch_size = 16  # Batch size for training
-    num_epochs = 30  # Total number of training epochs
+    num_epochs = 50  # Total number of training epochs
     learning_rate = 1e-3  # Learning rate for the optimizer
-    arch = "unet"  # Architecture to use
-    encoder_name = "resnet34"  # Encoder backbone to use
+    arch = "UnetPlusPlus"  # Architecture to use
+    encoder_name = "efficientnet-b3"  # Encoder backbone to use
     encoder_weights = "imagenet"  # Pretrained weights for the encoder
 
     # Folders for saving progress images and model checkpoints
@@ -39,6 +39,9 @@ def train():
     # we simply apply augmentations and convert to a tensor.
     transform = A.Compose(
         [
+            A.PadIfNeeded(
+                min_height=384, min_width=384, border_mode=cv2.BORDER_REFLECT
+            ),
             A.HorizontalFlip(p=0.5),
             A.RandomCrop(height=384, width=384),
             ToTensorV2(),
@@ -62,8 +65,8 @@ def train():
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=4
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=4
-    )
+        val_dataset, batch_size=batch_size, shuffle=True, num_workers=4
+    )  # shuffle to get diverse samples for visualization
 
     # --------------------------
     # Setup device and model
@@ -79,7 +82,7 @@ def train():
         [
             {
                 "params": model.model.encoder.parameters(),
-                "lr": learning_rate / 10,
+                "lr": learning_rate / 100,
             },  # Lower lr for the pretrained encoder
             {
                 "params": model.model.decoder.parameters(),
