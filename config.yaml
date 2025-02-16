@@ -1,0 +1,26 @@
+model:
+  arch: UnetPlusPlus
+  encoder_name: efficientnet-b3
+  encoder_weights: imagenet
+
+data:
+  train_dir: ./train_images    # location of DIV2K + BSD500 training images
+  test_dir: ./test_images      # location of images to be colorized
+  crop:
+    height: 384
+    width: 384
+  batch_size: 16
+  num_workers: 4  # number of parallel processes for data loading
+
+training:
+  num_epochs: 100
+  learning_rate: 0.001
+  save_dir: ./checkpoints  # directory for saving model checkpoints
+  progress_dir: ./progress  # directory for saving training progress images
+
+testing:
+  output_dir: ./colorized_outputs  # directory for saving colorized test images
+
+paths:
+  train_data: ./train_images  # path for training data
+  test_data: ./test_images   # path for test data 
