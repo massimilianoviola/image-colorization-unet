@@ -4,6 +4,7 @@ import albumentations as A
 import cv2
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import DataLoader, Dataset
+from config import CONFIG
 
 
 class ImageColorizationDataset(Dataset):
@@ -15,8 +16,8 @@ class ImageColorizationDataset(Dataset):
         """
         self.img_dir = img_dir
         self.img_filenames = [
-            os.path.join(img_dir, filename)
-            for filename in os.listdir(img_dir)
+            os.path.join(self.img_dir, filename)
+            for filename in os.listdir(self.img_dir)
             if filename.endswith((".png", ".jpg", ".jpeg"))
         ]
         self.transform = transform
@@ -51,18 +52,24 @@ class ImageColorizationDataset(Dataset):
 
 
 if __name__ == "__main__":
-    image_dir = "./test_images"
-
     transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            A.RandomCrop(height=256, width=256),
+            A.RandomCrop(
+                height=CONFIG['data']['crop']['height'],
+                width=CONFIG['data']['crop']['width']
+            ),
             ToTensorV2(),
         ]
     )
 
-    dataset = ImageColorizationDataset(img_dir=image_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=4)
+    dataset = ImageColorizationDataset(img_dir=CONFIG['data']['test_dir'], transform=transform)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=CONFIG['data']['batch_size'],
+        shuffle=True,
+        num_workers=CONFIG['data']['num_workers']
+    )
 
     for L, AB in dataloader:
         print("L channel shape:", L.shape)  # Expected: (batch_size, 1, H, W)

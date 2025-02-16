@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
 
 from dataset import ImageColorizationDataset
+from config import CONFIG
 
 
 class ColorizationModel(nn.Module):
@@ -40,27 +41,35 @@ class ColorizationModel(nn.Module):
 
 
 if __name__ == "__main__":
-    image_dir = "./test_images"
-    arch = "UnetPlusPlus"
-    encoder_name = "efficientnet-b3"
-    encoder_weights = "imagenet"
-
     transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            A.RandomCrop(height=384, width=384),
+            A.RandomCrop(
+                height=CONFIG['data']['crop']['height'],
+                width=CONFIG['data']['crop']['width']
+            ),
             ToTensorV2(),
         ]
     )
 
-    dataset = ImageColorizationDataset(img_dir=image_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=4)
+    dataset = ImageColorizationDataset(
+        img_dir=CONFIG['data']['image_dir'],
+        transform=transform
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=CONFIG['data']['batch_size'],
+        shuffle=True,
+        num_workers=CONFIG['data']['num_workers']
+    )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     model = ColorizationModel(
-        arch=arch, encoder_name=encoder_name, encoder_weights=encoder_weights
+        arch=CONFIG['model']['arch'],
+        encoder_name=CONFIG['model']['encoder_name'],
+        encoder_weights=CONFIG['model']['encoder_weights']
     ).to(device)
     model.eval()
 
