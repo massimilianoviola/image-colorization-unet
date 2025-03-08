@@ -1,10 +1,9 @@
 import os
-
 import albumentations as A
 import cv2
 from albumentations.pytorch import ToTensorV2
-from torch.utils.data import DataLoader, Dataset
 from config import CONFIG
+from torch.utils.data import DataLoader, Dataset
 
 
 class ImageColorizationDataset(Dataset):
@@ -28,7 +27,7 @@ class ImageColorizationDataset(Dataset):
     def __getitem__(self, idx):
         # Load the image as BGR
         img_path = self.img_filenames[idx]
-        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+        img = cv2.imread(img_path)
         if img is None:
             raise FileNotFoundError(f"Image not found at {img_path}")
 
@@ -56,19 +55,21 @@ if __name__ == "__main__":
         [
             A.HorizontalFlip(p=0.5),
             A.RandomCrop(
-                height=CONFIG['data']['crop']['height'],
-                width=CONFIG['data']['crop']['width']
+                height=CONFIG["data"]["crop"]["height"],
+                width=CONFIG["data"]["crop"]["width"],
             ),
             ToTensorV2(),
         ]
     )
 
-    dataset = ImageColorizationDataset(img_dir=CONFIG['data']['test_dir'], transform=transform)
+    dataset = ImageColorizationDataset(
+        img_dir=CONFIG["data"]["test_dir"], transform=transform
+    )
     dataloader = DataLoader(
         dataset,
-        batch_size=CONFIG['data']['batch_size'],
+        batch_size=CONFIG["data"]["batch_size"],
+        num_workers=CONFIG["data"]["num_workers"],
         shuffle=True,
-        num_workers=CONFIG['data']['num_workers']
     )
 
     for L, AB in dataloader:
