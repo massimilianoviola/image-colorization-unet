@@ -9,7 +9,7 @@ data:
   crop:
     height: 320
     width: 320
-  batch_size: 32
+  batch_size: 24
   num_workers: 8
 
 training:

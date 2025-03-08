@@ -79,6 +79,7 @@ def train():
         encoder_name=CONFIG["model"]["encoder_name"],
         encoder_weights=CONFIG["model"]["encoder_weights"],
     ).to(device)
+    model = torch.compile(model, mode="reduce-overhead", fullgraph=True)
     criterion = nn.L1Loss()
     optimizer = optim.AdamW(
         [
