@@ -1,18 +1,17 @@
 import albumentations as A
+import segmentation_models_pytorch as smp
 import torch
 import torch.nn as nn
 from albumentations.pytorch import ToTensorV2
-from torch.utils.data import DataLoader
-import segmentation_models_pytorch as smp
-
-from dataset import ImageColorizationDataset
 from config import CONFIG
+from dataset import ImageColorizationDataset
+from torch.utils.data import DataLoader
 
 
 class ColorizationModel(nn.Module):
     def __init__(
         self,
-        arch="UnetPlusPlus",
+        arch="Unet",
         encoder_name="efficientnet-b3",
         encoder_weights="imagenet",
         activation="sigmoid",
@@ -45,31 +44,30 @@ if __name__ == "__main__":
         [
             A.HorizontalFlip(p=0.5),
             A.RandomCrop(
-                height=CONFIG['data']['crop']['height'],
-                width=CONFIG['data']['crop']['width']
+                height=CONFIG["data"]["crop"]["height"],
+                width=CONFIG["data"]["crop"]["width"],
             ),
             ToTensorV2(),
         ]
     )
 
     dataset = ImageColorizationDataset(
-        img_dir=CONFIG['data']['image_dir'],
-        transform=transform
+        img_dir=CONFIG["data"]["test_dir"], transform=transform
     )
     dataloader = DataLoader(
         dataset,
-        batch_size=CONFIG['data']['batch_size'],
+        batch_size=CONFIG["data"]["batch_size"],
+        num_workers=CONFIG["data"]["num_workers"],
         shuffle=True,
-        num_workers=CONFIG['data']['num_workers']
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     model = ColorizationModel(
-        arch=CONFIG['model']['arch'],
-        encoder_name=CONFIG['model']['encoder_name'],
-        encoder_weights=CONFIG['model']['encoder_weights']
+        arch=CONFIG["model"]["arch"],
+        encoder_name=CONFIG["model"]["encoder_name"],
+        encoder_weights=CONFIG["model"]["encoder_weights"],
     ).to(device)
     model.eval()
 
