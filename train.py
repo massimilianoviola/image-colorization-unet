@@ -13,6 +13,20 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 
+class L1L2Loss(nn.Module):
+    def __init__(self, alpha=1.0, beta=1.0):
+        super(L1L2Loss, self).__init__()
+        self.alpha = alpha  # weight for L1 loss
+        self.beta = beta  # weight for L2 loss
+        self.l1_loss = nn.L1Loss()
+        self.l2_loss = nn.MSELoss()
+
+    def forward(self, output, target):
+        l1 = self.l1_loss(output, target)
+        l2 = self.l2_loss(output, target)
+        return self.alpha * l1 + self.beta * l2
+
+
 def train():
     # Folders for saving progress images and model checkpoints
     os.makedirs(CONFIG["training"]["checkpoints_dir"], exist_ok=True)
@@ -79,8 +93,7 @@ def train():
         encoder_name=CONFIG["model"]["encoder_name"],
         encoder_weights=CONFIG["model"]["encoder_weights"],
     ).to(device)
-    model = torch.compile(model, mode="reduce-overhead", fullgraph=True)
-    criterion = nn.L1Loss()
+    criterion = L1L2Loss(alpha=1.0, beta=0.5)
     optimizer = optim.AdamW(
         [
             {
