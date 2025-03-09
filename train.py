@@ -1,49 +1,55 @@
 import os
-
 import albumentations as A
 import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 from albumentations.pytorch import ToTensorV2
-from torch.optim import Adam
+from config import CONFIG
+from dataset import ImageColorizationDataset
+from model import ColorizationModel
+from torch import optim
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
-from dataset import ImageColorizationDataset
-from model import ColorizationModel
+
+class L1L2Loss(nn.Module):
+    def __init__(self, alpha=1.0, beta=1.0):
+        super(L1L2Loss, self).__init__()
+        self.alpha = alpha  # weight for L1 loss
+        self.beta = beta  # weight for L2 loss
+        self.l1_loss = nn.L1Loss()
+        self.l2_loss = nn.MSELoss()
+
+    def forward(self, output, target):
+        l1 = self.l1_loss(output, target)
+        l2 = self.l2_loss(output, target)
+        return self.alpha * l1 + self.beta * l2
 
 
 def train():
-    # --------------------------
-    # Training configuration
-    # --------------------------
-    image_dir = "./train_images/DIV2K_train_LR_bicubic/X3"  # Directory containing your training images
-    batch_size = 16  # Batch size for training
-    num_epochs = 50  # Total number of training epochs
-    learning_rate = 1e-3  # Learning rate for the optimizer
-    arch = "UnetPlusPlus"  # Architecture to use
-    encoder_name = "efficientnet-b3"  # Encoder backbone to use
-    encoder_weights = "imagenet"  # Pretrained weights for the encoder
-
     # Folders for saving progress images and model checkpoints
-    progress_folder = "./progress_images"
-    model_folder = "./models"
-    os.makedirs(progress_folder, exist_ok=True)
-    os.makedirs(model_folder, exist_ok=True)
+    os.makedirs(CONFIG["training"]["checkpoints_dir"], exist_ok=True)
+    os.makedirs(CONFIG["training"]["progress_dir"], exist_ok=True)
 
     # --------------------------
-    # Define data augmentation / preprocessing
+    # Define data augmentation
     # --------------------------
     # Since our input (L channel) is already scaled to [0, 1] and preprocessed as needed,
-    # we simply apply augmentations and convert to a tensor.
+    # we simply apply geometric augmentations and convert to a tensor.
     transform = A.Compose(
         [
             A.PadIfNeeded(
-                min_height=384, min_width=384, border_mode=cv2.BORDER_REFLECT
+                min_height=CONFIG["data"]["crop"]["height"],
+                min_width=CONFIG["data"]["crop"]["width"],
+                border_mode=cv2.BORDER_REFLECT,
             ),
             A.HorizontalFlip(p=0.5),
-            A.RandomCrop(height=384, width=384),
+            A.RandomRotate90(p=0.5),
+            A.RandomCrop(
+                height=CONFIG["data"]["crop"]["height"],
+                width=CONFIG["data"]["crop"]["width"],
+            ),
             ToTensorV2(),
         ]
     )
@@ -51,7 +57,9 @@ def train():
     # --------------------------
     # Setup dataset and dataloader (Train/Val Split)
     # --------------------------
-    dataset_full = ImageColorizationDataset(img_dir=image_dir, transform=transform)
+    dataset_full = ImageColorizationDataset(
+        img_dir=CONFIG["data"]["train_dir"], transform=transform
+    )
     total_size = len(dataset_full)
     indices = list(range(total_size))
     np.random.shuffle(indices)
@@ -62,10 +70,16 @@ def train():
     val_dataset = Subset(dataset_full, val_indices)
 
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=4
+        train_dataset,
+        batch_size=CONFIG["data"]["batch_size"],
+        num_workers=CONFIG["data"]["num_workers"],
+        shuffle=True,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=True, num_workers=4
+        val_dataset,
+        batch_size=CONFIG["data"]["batch_size"],
+        num_workers=CONFIG["data"]["num_workers"],
+        shuffle=True,
     )  # shuffle to get diverse samples for visualization
 
     # --------------------------
@@ -75,18 +89,20 @@ def train():
     print(f"Using device: {device}")
 
     model = ColorizationModel(
-        arch=arch, encoder_name=encoder_name, encoder_weights=encoder_weights
+        arch=CONFIG["model"]["arch"],
+        encoder_name=CONFIG["model"]["encoder_name"],
+        encoder_weights=CONFIG["model"]["encoder_weights"],
     ).to(device)
-    criterion = nn.L1Loss()
-    optimizer = Adam(
+    criterion = L1L2Loss(alpha=1.0, beta=0.5)
+    optimizer = optim.AdamW(
         [
             {
                 "params": model.model.encoder.parameters(),
-                "lr": learning_rate / 100,
+                "lr": CONFIG["training"]["learning_rate"] / 100,
             },  # Lower lr for the pretrained encoder
             {
                 "params": model.model.decoder.parameters(),
-                "lr": learning_rate,
+                "lr": CONFIG["training"]["learning_rate"],
             },  # Higher lr for the decoder
         ]
     )
@@ -96,12 +112,14 @@ def train():
     # Training loop
     # --------------------------
     print("Starting training...")
-    for epoch in range(num_epochs):
+    for epoch in range(CONFIG["training"]["num_epochs"]):
         # --- Training Phase ---
         model.train()
         running_loss = 0.0
         train_progress = tqdm(
-            train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} Training", leave=False
+            train_loader,
+            desc=f"Epoch {epoch + 1}/{CONFIG['training']['num_epochs']} Training",
+            leave=False,
         )
         for L, AB in train_progress:
             L = L.to(device)
@@ -116,13 +134,17 @@ def train():
 
             running_loss += loss.item() * L.size(0)
         avg_train_loss = running_loss / len(train_dataset)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}")
+        print(
+            f"Epoch {epoch + 1}/{CONFIG['training']['num_epochs']}, Train Loss: {avg_train_loss:.4f}"
+        )
 
         # --- Validation Phase ---
         model.eval()
         val_loss = 0.0
         val_progress = tqdm(
-            val_loader, desc=f"Epoch {epoch + 1}/{num_epochs} Validation", leave=False
+            val_loader,
+            desc=f"Epoch {epoch + 1}/{CONFIG['training']['num_epochs']} Validation",
+            leave=False,
         )
         with torch.inference_mode():
             for L, AB in val_progress:
@@ -132,7 +154,9 @@ def train():
                 loss = criterion(preds, AB)
                 val_loss += loss.item() * L.size(0)
         avg_val_loss = val_loss / len(val_dataset)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Val Loss: {avg_val_loss:.4f}")
+        print(
+            f"Epoch {epoch + 1}/{CONFIG['training']['num_epochs']}, Val Loss: {avg_val_loss:.4f}"
+        )
 
         # --------------------------
         # Save progress images at the end of each epoch
@@ -169,19 +193,27 @@ def train():
 
             # Save progress images into the progress folder
             cv2.imwrite(
-                os.path.join(progress_folder, f"sample_epoch_{epoch + 1}_pred.jpg"),
+                os.path.join(
+                    CONFIG["training"]["progress_dir"],
+                    f"sample_epoch_{epoch + 1}_pred.jpg",
+                ),
                 bgr_pred,
             )
             cv2.imwrite(
-                os.path.join(progress_folder, f"sample_epoch_{epoch + 1}_gt.jpg"),
+                os.path.join(
+                    CONFIG["training"]["progress_dir"],
+                    f"sample_epoch_{epoch + 1}_gt.jpg",
+                ),
                 bgr_gt,
             )
         # Save the model checkpoint if validation loss improved
         if avg_val_loss < best_val_loss:
             previous_best = best_val_loss
             best_val_loss = avg_val_loss
-            model_filename = f"colorization_model__{arch}__{encoder_name}__{learning_rate}__{epoch + 1:04d}__best.pth"
-            model_save_path = os.path.join(model_folder, model_filename)
+            model_filename = f"colorization_model__{CONFIG['model']['arch']}__{CONFIG['model']['encoder_name']}__{CONFIG['training']['learning_rate']}__{epoch + 1:04d}__best.pth"
+            model_save_path = os.path.join(
+                CONFIG["training"]["checkpoints_dir"], model_filename
+            )
             torch.save(model.state_dict(), model_save_path)
             print(
                 f"Epoch {epoch + 1}: Validation loss improved from {previous_best:.4f} to {avg_val_loss:.4f}."
@@ -193,8 +225,10 @@ def train():
     # --------------------------
     # Save the final model
     # --------------------------
-    model_filename = f"colorization_model__{arch}__{encoder_name}__{learning_rate}__{num_epochs:04d}__last.pth"
-    model_save_path = os.path.join(model_folder, model_filename)
+    model_filename = f"colorization_model__{CONFIG['model']['arch']}__{CONFIG['model']['encoder_name']}__{CONFIG['training']['learning_rate']}__{CONFIG['training']['num_epochs']:04d}__last.pth"
+    model_save_path = os.path.join(
+        CONFIG["training"]["checkpoints_dir"], model_filename
+    )
     torch.save(model.state_dict(), model_save_path)
     print(f"Model checkpoint saved as {model_save_path}")
 

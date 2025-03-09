@@ -15,7 +15,7 @@ echo "Downloading DIV2K lower-resolution images..."
 wget -O "$ZIP_FILE" "$DIV2K_LR_URL"
 
 echo "Extracting images to ${TRAIN_DIR}..."
-unzip "$ZIP_FILE" -d "$TRAIN_DIR"
+unzip -j "$ZIP_FILE" -d "$TRAIN_DIR"
 
 echo "Extraction complete. Deleting the ZIP file..."
 rm "$ZIP_FILE"
