@@ -13,7 +13,7 @@ data:
   num_workers: 8
 
 training:
-  num_epochs: 100
+  num_epochs: 50
   learning_rate: 0.0025
   checkpoints_dir: ./checkpoints  # Directory for saving model checkpoints
   progress_dir: ./progress  # Directory for saving training progress images
