@@ -9,6 +9,7 @@ from config import CONFIG
 from dataset import ImageColorizationDataset
 from model import ColorizationModel
 from torch import optim
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
@@ -45,7 +46,6 @@ def train():
                 border_mode=cv2.BORDER_REFLECT,
             ),
             A.HorizontalFlip(p=0.5),
-            A.RandomRotate90(p=0.5),
             A.RandomCrop(
                 height=CONFIG["data"]["crop"]["height"],
                 width=CONFIG["data"]["crop"]["width"],
@@ -106,6 +106,11 @@ def train():
             },  # Higher lr for the decoder
         ]
     )
+    scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=CONFIG["training"]["num_epochs"],
+        eta_min=CONFIG["training"]["learning_rate"] / 100,
+    )
     best_val_loss = float("inf")  # Initialize best validation loss for checkpointing
 
     # --------------------------
@@ -157,6 +162,7 @@ def train():
         print(
             f"Epoch {epoch + 1}/{CONFIG['training']['num_epochs']}, Val Loss: {avg_val_loss:.4f}"
         )
+        scheduler.step()
 
         # --------------------------
         # Save progress images at the end of each epoch
