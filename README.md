@@ -7,29 +7,28 @@ The model works in the LAB color space, where the L channel (grayscale) is used 
 
 1. Install dependencies:
 ```bash
+conda create -n image-colorization python==3.12 -y
+conda activate image-colorization
 pip install -r requirements.txt
 ```
 
 2. Download training data:
 ```bash
-# Download DIV2K dataset (800 images)
-./download_div2k_lr.sh
-
-# Download BSDS500 dataset (adds ~500 additional images)
-./download_bsds500.sh
+# Download DIV2K train + validation (900 images), BSDS500 (500 images), and Stanford Background Dataset (715 images)
+./data/download_data.sh
 ```
 
 ## 🏋️‍♂️ Training
 
-1. Adjust parameters in `config.yaml` like batch size, learning rate, and epochs if needed.
+1. Adjust parameters in `src/config.yaml` like batch size, learning rate, and epochs if needed.
 2. Run training:
 ```bash
-python train.py
+python src/train.py
 ```
 
 The training script will:
-- Save model checkpoints to `./checkpoints/`
-- Save progress images to `./progress/`
+- Save model checkpoints to `checkpoints/`
+- Save progress images to `progress/`
 - Save the best model based on validation loss
 
 ## 🧪 Testing
@@ -57,11 +56,11 @@ data:
   crop:
     height: 320
     width: 320
-  batch_size: 32
+  batch_size: 24
   num_workers: 8
 
 training:
-  num_epochs: 100
+  num_epochs: 50
   learning_rate: 0.0025
 ```
 The code was tested on an NVIDIA Tesla T4 GPU.

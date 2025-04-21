@@ -4,19 +4,19 @@ model:
   encoder_weights: imagenet
 
 data:
-  train_dir: ../data/train_images  # Location of DIV2K + BSD500 training images
-  test_dir: ../data/test_images    # Location of images to be colorized
+  train_dir: ./data/train_images  # Location of DIV2K + BSD500 + SBD training images
+  test_dir: ./data/test_images    # Location of images to be colorized
   crop:
-    height: 300
-    width: 300
+    height: 320
+    width: 320
   batch_size: 24
   num_workers: 8
 
 training:
   num_epochs: 50
   learning_rate: 0.0025
-  checkpoints_dir: ../checkpoints  # Directory for saving model checkpoints
-  progress_dir: ../progress  # Directory for saving training progress images
+  checkpoints_dir: ./checkpoints  # Directory for saving model checkpoints
+  progress_dir: ./progress  # Directory for saving training progress images
 
 testing:
-  output_dir: ../colorized_outputs  # Directory for saving colorized test images
+  output_dir: ./colorized_outputs  # Directory for saving colorized test images
