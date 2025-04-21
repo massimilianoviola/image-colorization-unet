@@ -174,8 +174,11 @@ def train():
             sample_L, sample_AB = next(iter(val_loader))
             sample_L = sample_L.to(device)
             sample_pred_AB = model(sample_L)
-            assert min(sample_pred_AB) >= -1 and max(sample_pred_AB) <= 1, (
-                "Predicted AB values should be in [-1, 1]."
+
+            min_val = sample_pred_AB.min().item()
+            max_val = sample_pred_AB.max().item()
+            assert -1.0 <= min_val and max_val <= 1.0, (
+                f"Predicted AB values out of range: {min_val:.3f} to {max_val:.3f}"
             )
 
             # For visualization, take the first sample from the batch.
