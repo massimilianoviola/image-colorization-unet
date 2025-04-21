@@ -14,7 +14,7 @@ class ColorizationModel(nn.Module):
         arch="Unet",
         encoder_name="efficientnet-b3",
         encoder_weights="imagenet",
-        activation="sigmoid",
+        activation="tanh",
     ):
         """
         Initializes the colorization model using a U-Net architecture.
@@ -22,8 +22,8 @@ class ColorizationModel(nn.Module):
             arch (str): The architecture to use (e.g., "Unet", "DeepLabV3+", etc.). The value is case-insensitive.
             encoder_name (str): Name of the encoder (from smp library).
             encoder_weights (str): Pretrained weights for the encoder.
-            activation (str): Activation function to apply to the output. Using "sigmoid" will constrain the output
-                to [0, 1], which is desired for the scaled AB channels.
+            activation (str): Activation function to apply to the output. Using "tanh" will constrain the output
+                to [-1, 1], which is desired for the scaled AB channels, so that gray is neutral 0.
         """
         super(ColorizationModel, self).__init__()
         self.model = smp.create_model(

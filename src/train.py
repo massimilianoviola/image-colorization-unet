@@ -1,4 +1,5 @@
 import os
+
 import albumentations as A
 import cv2
 import numpy as np
@@ -173,6 +174,9 @@ def train():
             sample_L, sample_AB = next(iter(val_loader))
             sample_L = sample_L.to(device)
             sample_pred_AB = model(sample_L)
+            assert min(sample_pred_AB) >= -1 and max(sample_pred_AB) <= 1, (
+                "Predicted AB values should be in [-1, 1]."
+            )
 
             # For visualization, take the first sample from the batch.
             L_np = sample_L[0].cpu().numpy()  # shape: (1, H, W)
@@ -180,18 +184,28 @@ def train():
             gt_AB_np = sample_AB[0].cpu().numpy()  # shape: (2, H, W)
 
             # Combine L and AB channels to create a LAB image.
-            # Note: Our dataset normalized LAB channels by dividing by 255,
-            # so values are in [0, 1]. We convert them back to [0, 255] for visualization.
-            lab_pred = np.concatenate([L_np, pred_AB_np], axis=0)  # shape: (3, H, W)
-            lab_gt = np.concatenate([L_np, gt_AB_np], axis=0)
+            # - L was normalized to [0,1], so we multiply by 255 to get back to [0,255].
+            # - A and B were normalized to [-1,1], so we multiply by 128 and add 128 to shift to [0,255].
+            lab_pred = np.concatenate([L_np, pred_AB_np], axis=0).astype(
+                np.float32
+            )  # shape: (3, H, W)
+            lab_gt = np.concatenate([L_np, gt_AB_np], axis=0).astype(np.float32)
 
             # Rearrange to shape (H, W, 3)
             lab_pred = np.transpose(lab_pred, (1, 2, 0))
             lab_gt = np.transpose(lab_gt, (1, 2, 0))
 
-            # Convert from [0, 1] to [0, 255]
-            lab_pred = (lab_pred * 255).astype(np.uint8)
-            lab_gt = (lab_gt * 255).astype(np.uint8)
+            # Denormalize L and AB channels
+            for arr in (lab_pred, lab_gt):
+                arr[..., 0] = arr[..., 0] * 255.0
+                arr[..., 1:] = arr[..., 1:] * 128.0 + 128.0
+                assert np.min(arr) >= 0 and np.max(arr) <= 255, (
+                    "LAB values should be in [0, 255]."
+                )
+
+            # Back to uint8
+            lab_pred = lab_pred.astype(np.uint8)
+            lab_gt = lab_gt.astype(np.uint8)
 
             # Convert LAB images to BGR for saving using OpenCV
             bgr_pred = cv2.cvtColor(lab_pred, cv2.COLOR_LAB2BGR)

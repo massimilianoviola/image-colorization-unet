@@ -1,6 +1,8 @@
 import os
+
 import albumentations as A
 import cv2
+import torch
 from albumentations.pytorch import ToTensorV2
 from config import CONFIG
 from torch.utils.data import DataLoader, Dataset
@@ -36,12 +38,20 @@ class ImageColorizationDataset(Dataset):
             "float32"
         )  # OpenCV outputs 8-bit LAB
 
-        # Normalize LAB channels [0, 255] -> [0, 1]
-        lab_img /= 255.0
+        # Normalize LAB channels
+        # - L: [0,255] → [0,1]
+        # - A/B: [0,255] → [-1,1]
+        lab_img[..., 0] = lab_img[..., 0] / 255.0
+        lab_img[..., 1:] = (lab_img[..., 1:] - 128.0) / 128.0
+        assert lab_img[..., 1:].min() >= -1.0 and lab_img[..., 1:].max() <= 1.0, (
+            f"AB channels out of range: {lab_img[..., 1:].min()} to {lab_img[..., 1:].max()}"
+        )
 
         # Apply transformations if provided
         if self.transform:
             lab_img = self.transform(image=lab_img)["image"]
+        else:
+            lab_img = torch.from_numpy(lab_img).permute(2, 0, 1)
 
         # Separate L and AB channels
         L_channel = lab_img[0:1, :, :]

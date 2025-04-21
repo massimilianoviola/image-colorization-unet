@@ -62,12 +62,21 @@ def colorize_image(model, device, image_path, output_path):
     # Process model output
     pred_AB = pred_AB.squeeze().cpu().numpy()
     pred_AB = np.transpose(pred_AB, (1, 2, 0))
+    pred_AB = pred_AB * 128.0 + 128.0
 
     # Combine L and predicted AB
-    result_lab = np.concatenate([L_resized[:, :, np.newaxis], pred_AB * 255], axis=2)
+    result_lab = np.concatenate([L_resized[:, :, np.newaxis], pred_AB], axis=2).astype(
+        np.uint8
+    )
+    assert result_lab.shape == (
+        CONFIG["data"]["crop"]["height"],
+        CONFIG["data"]["crop"]["width"],
+        3,
+    )
+    assert np.min(result_lab) >= 0 and np.max(result_lab) <= 255
 
     # Convert back to BGR
-    result_bgr = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
+    result_bgr = cv2.cvtColor(result_lab, cv2.COLOR_LAB2BGR)
 
     # Resize back to original dimensions
     result_bgr = cv2.resize(
