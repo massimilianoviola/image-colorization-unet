@@ -1,0 +1,7 @@
+albumentations
+numpy
+opencv_python
+PyYAML
+segmentation_models_pytorch
+torch
+tqdm
