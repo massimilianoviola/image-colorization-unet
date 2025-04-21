@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+
 import cv2
 import numpy as np
 import torch
@@ -15,8 +16,9 @@ def get_best_model_path(model_folder):
         raise FileNotFoundError("No best model checkpoint found in the models folder.")
 
     def extract_epoch(filename):
-        match = re.search(r"(\d{4})", filename)  # Look for a 4-digit epoch number
-        return int(match.group(1)) if match else 0  # Convert to integer for sorting
+        # Look for the pattern __<4-digit>__best in the filename
+        match = re.search(r"__(\d{4})__best", filename)
+        return int(match.group(1)) if match else 0
 
     # Sort files by extracted epoch number in descending order
     model_files = sorted(model_files, key=extract_epoch, reverse=True)
